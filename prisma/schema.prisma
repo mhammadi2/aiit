@@ -1,0 +1,96 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  password      String
+  role          Role      @default(USER)
+  profile       Profile?
+  donations     Donation[]
+  events        Event[]
+  posts         Post[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Profile {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  user        User      @relation(fields: [userId], references: [id])
+  avatar      String?
+  bio         String?
+  phoneNumber String?
+  address     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Donation {
+  id          String    @id @default(cuid())
+  amount      Float
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  status      PaymentStatus
+  paymentMethod PaymentMethod
+  transactionId String?
+  refundStatus RefundStatus @default(NONE)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Event {
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  location    String
+  startDate   DateTime
+  endDate     DateTime
+  imageUrl    String?
+  organizer   User      @relation(fields: [organizerId], references: [id])
+  organizerId String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model Post {
+  id          String    @id @default(cuid())
+  title       String
+  content     String
+  imageUrl    String?
+  author      User      @relation(fields: [authorId], references: [id])
+  authorId    String
+  published   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum PaymentMethod {
+  STRIPE
+  PAYPAL
+}
+
+enum RefundStatus {
+  NONE
+  PENDING
+  COMPLETED
+  REJECTED
+}
