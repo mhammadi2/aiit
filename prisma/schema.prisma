@@ -45,20 +45,22 @@ model Donation {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 }
-
 model Event {
-  id          String    @id @default(cuid())
+  id          String       @id @default(cuid())
   title       String
-  description String
+  description String       @db.Text
   location    String
   startDate   DateTime
   endDate     DateTime
   imageUrl    String?
-  organizer   User      @relation(fields: [organizerId], references: [id])
-  organizerId String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  emailLists  EmailList[]
+  notifications EventNotification[]
 }
+
 
 model Post {
   id          String    @id @default(cuid())
@@ -93,4 +95,30 @@ enum RefundStatus {
   PENDING
   COMPLETED
   REJECTED
+}
+
+model EmailList {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  emails      String[]
+  events      Event[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+model EventNotification {
+  id        String    @id @default(cuid())
+  eventId   String
+  event     Event     @relation(fields: [eventId], references: [id])
+  status    NotificationStatus
+  sentAt    DateTime?
+  error     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
 }
