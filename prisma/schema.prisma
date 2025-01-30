@@ -17,6 +17,8 @@ model User {
   donations     Donation[]
   events        Event[]
   posts         Post[]
+  resetToken    String?   // Add this for password reset functionality
+  resetTokenExpiry DateTime? // Add this for password reset functionality
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }

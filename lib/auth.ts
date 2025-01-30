@@ -1,42 +1,31 @@
-import { PrismaAdapter } from '@auth/prisma-adapter'
-import { NextAuthOptions } from 'next-auth'
-import GoogleProvider from 'next-auth/providers/google'
-import CredentialsProvider from 'next-auth/providers/credentials'
-import bcrypt from 'bcryptjs'
-
-import { prisma } from '@/lib/db'
+import { NextAuthOptions } from "next-auth"
+import CredentialsProvider from "next-auth/providers/credentials"
+import { PrismaAdapter } from "@auth/prisma-adapter"
+import { prisma } from "@/lib/prisma"
+import { compare } from "bcryptjs"
+import { Role } from "@prisma/client"
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: {
-    strategy: 'jwt',
+    strategy: "jwt",
   },
   pages: {
-    signIn: '/auth/signin',
+    signIn: "/auth/login",
+    signUp: "/auth/signup",
+    error: "/auth/error",
   },
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-      profile(profile) {
-        return {
-          id: profile.sub,
-          name: profile.name,
-          email: profile.email,
-          image: profile.picture,
-          role: 'USER',
-        }
-      },
-    }),
     CredentialsProvider({
-      name: 'credentials',
+      name: "credentials",
       credentials: {
-        email: { label: 'Email', type: 'email' },
-        password: { label: 'Password', type: 'password' },
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
+        role: { label: "Role", type: "text" },
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          throw new Error('Invalid credentials')
+          throw new Error("Invalid credentials")
         }
 
         const user = await prisma.user.findUnique({
@@ -45,17 +34,18 @@ export const authOptions: NextAuthOptions = {
           },
         })
 
-        if (!user || !user.password) {
-          throw new Error('Invalid credentials')
+        if (!user) {
+          throw new Error("User not found")
         }
 
-        const isValidPassword = await bcrypt.compare(
-          credentials.password,
-          user.password
-        )
+        const isPasswordValid = await compare(credentials.password, user.password)
 
-        if (!isValidPassword) {
-          throw new Error('Invalid credentials')
+        if (!isPasswordValid) {
+          throw new Error("Invalid password")
+        }
+
+        if (credentials.role !== user.role) {
+          throw new Error("Invalid role")
         }
 
         return {
@@ -68,38 +58,19 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async session({ token, session }) {
-      if (token) {
-        session.user.id = token.id as string
-        session.user.name = token.name
-        session.user.email = token.email
-        session.user.role = token.role as string
-        session.user.image = token.picture
-      }
-
-      return session
-    },
     async jwt({ token, user }) {
-      const dbUser = await prisma.user.findFirst({
-        where: {
-          email: token.email!,
-        },
-      })
-
-      if (!dbUser) {
-        if (user) {
-          token.id = user?.id
-        }
-        return token
+      if (user) {
+        token.role = user.role
       }
-
-      return {
-        id: dbUser.id,
-        name: dbUser.name,
-        email: dbUser.email,
-        role: dbUser.role,
-        picture: dbUser.image,
+      return token
+    },
+    async session({ session, token }) {
+      if (session.user) {
+        session.user.role = token.role as Role
       }
+      return session
     },
   },
 }
+
+
